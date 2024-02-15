@@ -1,9 +1,10 @@
 import requests as req
-import bs4 as soup
+from bs4 import BeautifulSoup
 import os
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import re
 
 DEBUG = False
 BASE_URL = "https://canvas.vu.nl/api/v1"
@@ -16,6 +17,9 @@ DATA = {}
 def load_key(keyfile="./key.secret"):
     with open(keyfile) as f:
         return f.readline()
+
+def remove_html(text : str) -> str:
+    return BeautifulSoup(text, "lxml").text
 
 def get_other_pages(headers) -> dict:
     raw_links: list[str] = headers['Link'].split(",")
@@ -105,7 +109,7 @@ def get_question_status(questions, submissions):
 
         question_results.append({
             "id": question_id,
-            "text": question['question_text'],
+            "text": remove_html(question['question_text']),
             "results": pd.Series(statuses)
         })
 
@@ -135,9 +139,6 @@ def dbg_print_json(obj):
 def dbg_print(obj):
     if DEBUG:
         print(obj)
-
-
-
 
 # Find the API key from a file
 KEY = load_key()
