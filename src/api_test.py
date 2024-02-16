@@ -6,10 +6,36 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 
+class Course:
+    def __init__(self, id) -> None:
+        self.id = id
+        self.assignments : list[Assignment] = None
+        self.students : list[Student] = None
+        self.quizzes : list[Quiz] = None
+
+class Student:
+    def __init__(self) -> None:
+        pass
+
+class Assignment:
+    def __init__(self, id) -> None:
+        self.id = id
+        self.submissions : list[Submission] = None
+
+class Quiz(Assignment):
+    def __init__(self, id) -> None:
+        self.id = id
+
+class Submission:
+    pass
+
+
+
+
 DEBUG = False
 BASE_URL = "https://canvas.vu.nl/api/v1"
-COURSE_ID = "68322"
-QUIZ_ID = "58223"
+COURSE_ID = None
+QUIZ_ID = None
 KEY = None
 DATA = {}
 
@@ -84,7 +110,6 @@ def get_submission_status(quiz_submissions) -> pd.Series:
     statuses = map(
         lambda submission: submission['workflow_state'], quiz_submissions)
     statuses = pd.Series(statuses)
-    print(statuses.value_counts())
 
     status_counts = statuses.value_counts()
     barplot = plt.bar(x=status_counts.index.values,
@@ -140,8 +165,12 @@ def dbg_print(obj):
     if DEBUG:
         print(obj)
 
-# Find the API key from a file
-KEY = load_key()
+
+# Load config files
+with open("./quizstat_config.json", "r") as fp:
+    CONFIG = json.load(fp)
+    KEY = load_key(CONFIG['keyfile'])
+    COURSE_ID = CONFIG['course_id']
 
 # Get the list of quizzes:
 all_quizzes = get_quizzes(BASE_URL,COURSE_ID,KEY)
