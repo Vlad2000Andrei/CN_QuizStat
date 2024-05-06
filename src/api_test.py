@@ -4,12 +4,53 @@ import os
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
-import re
+
+class CanvasAPI:
+    def __init__(self, url, key) -> None:
+        self.url = url
+        self.key = key
+        pass
+
+class Course:
+    def __init__(self, id, api : CanvasAPI) -> None:
+        self.id = id
+        self.assignments : list[Assignment] = None
+        self.students : list[Student] = None
+        self.quizzes : list[Quiz] = None
+        self.api : CanvasAPI = api
+
+    # Requests the list of quizzes from the canvas API. Only gets info about the quiz, not the submissions.
+    def load_quizzes(self):
+        pass
+
+class Student:
+    def __init__(self, id, course : Course, api : CanvasAPI) -> None:
+        self.id = id
+        self.course : Course = course
+        self.api : CanvasAPI = api
+
+class Assignment:
+    def __init__(self, id, course : Course, api : CanvasAPI) -> None:
+        self.id = id
+        self.submissions : list[Submission] = None
+        self.course : Course = course
+        self.api : CanvasAPI = api
+
+class Quiz(Assignment):
+    def __init__(self, id) -> None:
+        self.id = id
+
+class Submission:
+    def __init__(self, id, assignment : Assignment, api : CanvasAPI) -> None:
+        self.id = id
+        self.assignment : Assignment = assignment
+        self.api : CanvasAPI = api
+
 
 DEBUG = False
 BASE_URL = "https://canvas.vu.nl/api/v1"
-COURSE_ID = "68322"
-QUIZ_ID = "58223"
+COURSE_ID = None
+QUIZ_ID = None
 KEY = None
 DATA = {}
 
@@ -84,7 +125,6 @@ def get_submission_status(quiz_submissions) -> pd.Series:
     statuses = map(
         lambda submission: submission['workflow_state'], quiz_submissions)
     statuses = pd.Series(statuses)
-    print(statuses.value_counts())
 
     status_counts = statuses.value_counts()
     barplot = plt.bar(x=status_counts.index.values,
@@ -140,8 +180,19 @@ def dbg_print(obj):
     if DEBUG:
         print(obj)
 
-# Find the API key from a file
-KEY = load_key()
+
+# Load config files
+with open("./quizstat_config.json", "r") as fp:
+    CONFIG = json.load(fp)
+    KEY = load_key(CONFIG['keyfile'])
+    COURSE_ID = CONFIG['course_id']
+
+
+API = CanvasAPI(BASE_URL, KEY)
+CN2023 = Course(COURSE_ID, API)
+
+
+input("Press return to continue...")
 
 # Get the list of quizzes:
 all_quizzes = get_quizzes(BASE_URL,COURSE_ID,KEY)
