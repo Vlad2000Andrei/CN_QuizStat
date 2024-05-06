@@ -7,6 +7,7 @@ import json
 from datetime import datetime
 from dateutil import parser
 import matplotlib.pyplot as plt
+import time
 
 DEBUG = False
 BASE_URL = "https://canvas.vu.nl/"
@@ -14,7 +15,6 @@ COURSE_ID = None
 QUIZ_ID = None
 KEY = None
 DATA = {}
-
 
 def load_key(keyfile="./key.secret"):
     with open(keyfile) as f:
@@ -51,7 +51,7 @@ def select_id_from_list(data: list, displayed_title_attribute: str = "name"):
 
 # plot the submissions of an assignment as a boxplot
 # also returns the timestamps and their submissions
-def plot_assignment_submission_times(assignment: Assignment, time_unit: str = "seconds", submissions : list[Submission] = None) -> tuple[list[float], list[Submission]]:
+def plot_assignment_submission_times(assignment, time_unit: str = "seconds", submissions : list = None, references = []) -> tuple:
     TIME_UNITS = {
         "seconds": 1,
         "minutes": 60,
@@ -80,16 +80,21 @@ def plot_assignment_submission_times(assignment: Assignment, time_unit: str = "s
         relative_timestamp = unlock_timestamp
         relative_timestamp_name = "Unlock Time"
 
+    references = [str_to_timestamp(ref) for ref in references]
+    references = [(r - relative_timestamp) / TIME_UNITS[time_unit] for r in references]
+
     timediffs = [(t - relative_timestamp) / TIME_UNITS[time_unit]
                  for t in timestamps]
     plt.boxplot(timediffs)
     plt.ylabel(f"Time diff to {relative_timestamp_name} [{time_unit}]")
-    plt.title(f"Distribution of submission times relative to {relative_timestamp_name} ({datetime.fromtimestamp(relative_timestamp).strftime('%d/%m/%Y, %H:%M:%S')})")
+    plt.title(f"Distribution of ({len(timediffs)}) submission times relative to {relative_timestamp_name} ({datetime.fromtimestamp(relative_timestamp).strftime('%d/%m/%Y, %H:%M:%S')})")
+    for reference in references:
+        plt.axhline(reference, c='r')
     plt.show()
 
     return (timestamps, all_submissions)
 
-def plot_assignment_scores(assignment: Assignment, submissions : list[Submission] = None) -> tuple[list[float], list[Submission]]:
+def plot_assignment_scores(assignment: Assignment, submissions : list = None):
     if submissions is None:
         all_submissions = assignment.get_submissions()
     else:
@@ -97,12 +102,12 @@ def plot_assignment_scores(assignment: Assignment, submissions : list[Submission
 
     scores = [s.score for s in all_submissions if not s.score is None]
     plt.boxplot(scores)
-    plt.title(f"Score distribution of {assignment.name}")
+    plt.title(f"Score distribution of {assignment.name} ({len(scores)})")
     plt.ylabel(f"Score Obtained [Points]")
     plt.show()
 
 # Get the unlock time, due time and lock time as float timestamps
-def get_assignment_start_end (assignment : Assignment) -> tuple[float, float, float]:
+def get_assignment_start_end (assignment : Assignment) -> tuple:
     # Find key submission time points
     try:
         due_timestamp = str_to_timestamp(assignment.due_at)
@@ -126,9 +131,7 @@ CN2023 = CanvasAPI.get_course(COURSE_ID)    # Get the course
 QUIZZES = CN2023.get_quizzes()
 ASSIGNMENTS = CN2023.get_assignments()
 
-for assignment in ASSIGNMENTS:
-    print(assignment.id, "\t", assignment.name)
-
-assign = select_id_from_list(ASSIGNMENTS, "name")
-assign_submission_times, assign_submissions = plot_assignment_submission_times(assign, "seconds")
-plot_assignment_scores(assign, submissions=assign_submissions)
+while True:
+    assign = select_id_from_list(ASSIGNMENTS, "name")
+    assign_submission_times, assign_submissions = plot_assignment_submission_times(assign, "days", references=["12 April 2024"])
+    plot_assignment_scores(assign, submissions=assign_submissions)
